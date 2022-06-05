@@ -1,27 +1,32 @@
 var tasks = {};
 
 var createTask = function(taskText, taskDate, taskList) {
-  // create elements that make up a task item
+  // CREATE ELEMENTS THAT MAKE UP A TASK ITEM
   var taskLi = $("<li>").addClass("list-group-item");
+  
   var taskSpan = $("<span>")
     .addClass("badge badge-primary badge-pill")
     .text(taskDate);
-  var taskP = $("<p>")
+  
+    var taskP = $("<p>")
     .addClass("m-1")
     .text(taskText);
 
-  // append span and p element to parent li
+  // APPEND SPAN AND P ELEMENT TO PARENT LI
   taskLi.append(taskSpan, taskP);
 
+  // CHECK DUE DATE
+  auditTask(taskLi);
 
-  // append to ul list on the page
+
+  // APPEND TO UL LIST ON THE PAGE
   $("#list-" + taskList).append(taskLi);
 };
 
 var loadTasks = function() {
   tasks = JSON.parse(localStorage.getItem("tasks"));
 
-  // if nothing in localStorage, create a new object to track all task status arrays
+  // IF NOTHING IN LOCAL STORAGE, CREATE NEW OBJECT TO TRACK ALL TASK STATUS ARRAYS
   if (!tasks) {
     tasks = {
       toDo: [],
@@ -31,10 +36,10 @@ var loadTasks = function() {
     };
   }
 
-  // loop over object properties
+  // LOOP OVER OBJECT PROPERTIES
   $.each(tasks, function(list, arr) {
     console.log(list, arr);
-    // then loop over sub-array
+    // THEN LOOP OVER SUB ARRAY
     arr.forEach(function(task) {
       createTask(task.text, task.date, list);
     });
@@ -43,6 +48,26 @@ var loadTasks = function() {
 
 var saveTasks = function() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
+};
+
+var auditTask = function(taskEl) {
+  // GET DATE FROM TASK ELEMENT
+  var date = $(taskEl).find("span").text().trim();
+
+  // CONVERT TO MOMENT OBJECT AT 5:00 PM
+  var time = moment(date, "L").set("hour", 17);
+  
+  // REMOVE ANY OLD CLASSES FROM ELEMENT
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+
+  // APPLY NEW CLASS IF TASK IS NEAR OR OVER DUE DATE
+
+  if (moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger");
+  }
+  else if (Math.abs(moment().diff(time, "days")) <= 2) {
+    $(taskEl).addClass("list-group-item-warning");
+  }
 };
 
 $(".list-group").on("click", "p", function() {
@@ -100,16 +125,24 @@ $(".list-group").on("click", "span", function() {
   // SWAP OUT ELEMENTS
   $(this).replaceWith(dateInput);
 
+  // ENABLE JQUERY UI DATEPICKER
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function() {
+      // WHEN CALENDAR IS CLOSED, FOCE A "CHANGE" EVENT ON THE 'dateInput'
+      $(this).trigger("change");
+    }
+  });
+
   // AUTOMATICALLY FOCUS ON NEW ELEMENT
   dateInput.trigger("focus");
 });
 
 // VALUE OF DUE DATE WAS CHANGED
-$(".list-group").on("blur", "input[type='text']", function() {
+$(".list-group").on("change", "input[type='text']", function() {
   // GET CURRENT TEXT
   var date = $(this)
-    .val()
-    .trim();
+    .val();
 
   // GET THE PARENT ul'S id ATTRIBUTE
   var status = $(this)
@@ -133,22 +166,25 @@ $(".list-group").on("blur", "input[type='text']", function() {
 
   // REPLACE INPUT WITH SPAN ELEMENT
   $(this).replaceWith(taskSpan);
+
+  // PASS TASK'S <li> ELEMENT INTO auditTask() TO CHECK NEW DUE DATE
+  auditTask($(taskSpan).closest(".list-group-item"));
 });
 
 
-// modal was triggered
+// MODAL WAS TRIGGERED
 $("#task-form-modal").on("show.bs.modal", function() {
-  // clear values
+  // CLEAR VALUES
   $("#modalTaskDescription, #modalDueDate").val("");
 });
 
-// modal is fully visible
+// MODAL IS FULLY VISIBLE
 $("#task-form-modal").on("shown.bs.modal", function() {
-  // highlight textarea
+  // HIGHLIGHT TEXTAREA
   $("#modalTaskDescription").trigger("focus");
 });
 
-// save button in modal was clicked
+// SAVE BUTTON IN MODAL WAS CLICKED
 $("#task-form-modal .btn-primary").click(function() {
   // get form values
   var taskText = $("#modalTaskDescription").val();
@@ -157,10 +193,10 @@ $("#task-form-modal .btn-primary").click(function() {
   if (taskText && taskDate) {
     createTask(taskText, taskDate, "toDo");
 
-    // close modal
+    // CLOSE MODAL
     $("#task-form-modal").modal("hide");
 
-    // save in tasks array
+    // SAVE IN TASKS ARRAY
     tasks.toDo.push({
       text: taskText,
       date: taskDate
@@ -170,7 +206,7 @@ $("#task-form-modal .btn-primary").click(function() {
   }
 });
 
-// remove all tasks
+// REMOVE ALL TASKS
 $("#remove-tasks").on("click", function() {
   for (var key in tasks) {
     tasks[key].length = 0;
@@ -179,7 +215,7 @@ $("#remove-tasks").on("click", function() {
   saveTasks();
 });
 
-// load tasks for the first time
+// LOAD TASKS FOR THE FIRST TIME
 loadTasks();
 
 $(".card .list-group").sortable({
@@ -246,3 +282,8 @@ $("#trash").droppable({
     console.log("out");
   }
 });
+
+$("#modalDueDate").datepicker({
+  minDate: 1
+});
+
